@@ -1,0 +1,70 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+
+model Patient {
+  //id
+  //name
+  //MRN
+  //DOB
+
+  id Int @id @default(autoincrement())
+  lastName String
+  firstName String
+  MRN String @unique
+  DOB DateTime
+  orders Order[]
+
+}
+
+model Provider {
+  //id
+  //name
+  //NPI
+  id Int @id @default(autoincrement())
+  name String
+  NPI String @unique
+  orders Order[]
+
+}
+
+model Order {
+  //id
+  //patient ID -> patient
+  //provider ID -> provider
+  //medications
+  //primaryDiagnosis
+  //patientRecords
+  id Int @id @default(autoincrement())
+  patient Patient @relation(fields: [patientId], references:[id]) 
+  patientId Int 
+  provider Provider @relation(fields: [providerId], references:[id])
+  providerId Int
+  medications String
+  primaryDiagnosis String
+  patientRecords String
+  carePlan CarePlan?
+}
+
+model CarePlan{
+  //id
+  //order id -> order
+  //content
+  //status (pending, finished, error)
+  id Int @id @default(autoincrement())
+  order Order @relation(fields: [orderId], references: [id])
+  orderId Int @unique
+  content String
+  status String
+}
