@@ -5,22 +5,70 @@ require('dotenv').config();
 const Anthropic = require('@anthropic-ai/sdk');
 
 const client = new Anthropic();
+
+const { PrismaClient } = require("./generated/prisma");
+const prisma = new PrismaClient();
 //creates orders map for storing [order id] with [status] object
-const orders = new Map();
+//const orders = new Map();
 const cors = require('cors');
 app.use(cors());
-
 app.use(express.json());
 
 const port = 3001;
 
 app.post('/api/orders', async (req, res) =>{
     const id = randomUUID();
-    orders.set(id, {id, status: 'pending', data: req.body});
+    //gievn req.body, which holds the form data
+    //The form data is used in the prompt and sent by AI Api
+    //The order currently holds the order responses,
+    //but it should be changed to be stored in posgreSQL Database
+    //using Prisma to store the orders, patient, provider, and careplan
+    //
+    //orders.set(id, {id, status: 'pending', data: req.body});
+    
 
-    const { patientFirstName, patientLastName, providerName, primaryDiagnosis, additionalDiagnoses,
+    const { patientFirstName, patientLastName, patientDOB, providerName, providerNPI, patientMRN, 
+            primaryDiagnosis, additionalDiagnoses,
             medicationName, medicationHistory, patientRecords } = req.body;
 
+    const provider = await prisma.provider.upsert({
+        where: { NPI: providerNPI},
+        update: {},
+        create: {
+            name: providerName,
+            NPI: providerNPI
+        }
+    });
+
+    const patient = await prisma.patient.upsert({
+        where: { MRN: patientMRN },
+        update: {},
+        create: {
+           lastName: patientLastName,
+           firstName: patientFirstName,
+           MRN: patientMRN,
+           DOB: new Date(patientDOB)
+        }
+    });
+
+    const Order = await prisma.order.create({
+        data: {
+            patientId: patient.id,
+            providerId: provider.id,
+            medications: medicationName,
+            primaryDiagnosis: primaryDiagnosis,
+            patientRecords: patientRecords
+        }
+    });
+
+    const CarePlan = await prisma.carePlan.create({
+        data:{   
+            orderId: Order.id,
+            content: "",
+            status: "processing"
+        }
+    });
+    
     const prompt = 
     `you are a clinical pharmacist. Generate a professional care plan for the following patient
         Patient: ${patientFirstName} ${patientLastName}
@@ -37,8 +85,6 @@ app.post('/api/orders', async (req, res) =>{
         3. Pharmacist Interventions
         4. Monitoring Plan 
     `;
-
-    
     const message = await client.messages.create({
         model: `claude-opus-4-5`,
         max_tokens: 1024,
@@ -47,15 +93,30 @@ app.post('/api/orders', async (req, res) =>{
 
     const carePlan = message.content[0].text;
 
-    orders.set(id, {id, status: 'completed', carePlan});
+    await prisma.carePlan.update({
+        where: {orderId: Order.id},
+        data: {
+            orderId: Order.id,
+            content: carePlan,
+            status: "completed"
+        }
+    });
+    
+    //orders.set(id, {id, status: 'completed', carePlan});
     res.json({id, status: 'completed', carePlan});
 })
 
-app.get('/api/orders/:id', (req, res) => {
-    let order_id = req.params.id;
-    if(orders.has(order_id)){
-        const order = orders.get(order_id);
-        res.json(order);
+app.get('/api/orders/:id', async (req, res) => {
+    let order_id = Number(req.params.id);
+
+    const order = await prisma.order.findUnique({
+        where: { id: order_id },
+        include: {carePlan: true}
+    });
+
+    if(order !== null){
+        const carePlan_content = order.carePlan.content;
+        res.json(carePlan_content);
     }else{
         res.status(404).json({error: "order not found"});
     }
@@ -64,3 +125,4 @@ app.get('/api/orders/:id', (req, res) => {
 app.listen(port, () =>{
     console.log(`server running on port: ${port}`);
 })
+

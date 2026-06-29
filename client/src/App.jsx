@@ -5,9 +5,14 @@ function App() {
   let form = {
     patientFirstName: '',
     patientLastName: '',
+    patientDOB: '',
     providerName: '',
+    providerNPI: '',
+    patientMRN: '',
     primaryDiagnosis: '',
+    additionalDiagnosis: '',
     medicationName: '',
+    medicationHistory: '',
     patientRecords: ''
   }
   const [formData, setFormData] = useState(form);
@@ -23,7 +28,7 @@ function App() {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(formData)
     });
-
+ 
     const data = await response.json();
     setCarePlan(data.carePlan);
     setLoading(false);
@@ -49,11 +54,33 @@ function App() {
             onChange={handleChange} 
           />
 
+          <label>Patient DOB</label>
+          <input 
+            name="patientDOB"
+            type="date" 
+            value={formData.patientDOB} 
+            onChange={handleChange} 
+          />
+
           <label>Provider Name</label>
           <input name= 
             "providerName" 
             value={formData.providerName} 
             onChange={handleChange} 
+          />
+
+          <label>Provider NPI</label>
+          <input
+            name="providerNPI"
+            value={formData.providerNPI}
+            onChange={handleChange}
+          />
+
+          <label>Patient MRN</label>
+          <input
+            name="patientMRN"
+            value={formData.patientMRN}
+            onChange={handleChange}
           />
 
           <label>Primary Diagnosis</label>
@@ -63,6 +90,13 @@ function App() {
             onChange={handleChange} 
           />
 
+          <label>Additional Diagnosis (comma separated)</label>
+          <input
+            name= "additionalDiagnosis"
+            value={formData.additionalDiagnosis}
+            onChange={handleChange}
+          />
+
           <label>Medication Name</label>
           <input 
             name= "medicationName" 
@@ -70,7 +104,14 @@ function App() {
             onChange={handleChange} 
           />
 
-          <label>Patient Records</label>
+          <label>Medication History</label>
+          <input
+            name="medicationHistory"
+            value={formData.medicationHistory}
+            onChange={handleChange}
+          />
+
+          <label>Patient Records (one per line)</label>
           <input 
             name = "patientRecords" 
             value={formData.patientRecords} 
